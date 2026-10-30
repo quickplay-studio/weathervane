@@ -1,0 +1,13 @@
+# One champion per portfolio. brokers lists the paper venues that portfolio is routed to.
+# regime_reference is the instrument whose HMM regimes label trades and chart backgrounds.
+portfolios:
+  - id: ftmo
+    rules: ftmo_2step_swing
+    brokers: [oanda]
+    regime_reference: US500
+    instruments: [EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD, US500, US100, US30, GER40, UK100, JP225, XAUUSD, XAGUSD, USOIL, NATGAS, BTCUSD]
+  - id: etf
+    rules: ftmo_2step_swing
+    brokers: [alpaca]
+    regime_reference: SPY
+    instruments: [SPY, EFA, EEM, IEF, TLT, LQD, GLD, DBC, VNQ, UUP]

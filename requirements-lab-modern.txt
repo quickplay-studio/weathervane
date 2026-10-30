@@ -1,0 +1,15 @@
+# Lab, group "modern" (Python 3.12). Installed after requirements.txt.
+# Each non-comment line is the argument list of ONE `pip install`; the workflow runs them one by one and keeps going
+# when a line fails (`|| echo failed`), so a broken package only turns its own report row red.
+openbb-core openbb-cftc
+ffn
+vollib py_vollib
+pysabr
+--no-deps financepy
+gs-quant
+qfin
+quantsbin
+finoptions
+QuantLib
+# willowtree and financial-engineering are not on PyPI under these names: the workflow clones them at the commits pinned
+# in config/lab.yaml (sources:) into data/lab/src/.

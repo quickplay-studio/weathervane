@@ -1,0 +1,84 @@
+# Weathervane engine settings: budgets, walk-forward windows, gates, LLM provider chain, notifications.
+timeframe: 1d
+
+data:
+  min_bars: 1500             # instruments with less history are skipped
+  incremental_days: 30       # days refetched on each incremental update
+  retries: 3
+  yf_sleep_s: 1.0            # pause between yfinance tickers
+  fetch_budget_s: 600        # hard time budget for one fetch run
+
+walkforward:
+  train_years: 6
+  test_years: 1
+  first_test_year: 2010
+  n_trials: 25               # optuna TPE trials per fold
+  vault_days: 252            # last bars hidden from everything except the weekly promotion check
+  min_test_bars: 63          # a test window shorter than this is skipped
+  train_sims: 1000           # exam Monte Carlo paths in the train objective
+  train_risk_grid: [0.0025, 0.005, 0.01, 0.015]
+  oos_sims: 5000             # exam Monte Carlo paths when scoring OOS
+  block_len: 10
+  seed: 7
+
+gates:
+  min_oos_trades: 60
+  min_dsr: 0.90
+  min_improvement: 0.02
+  regime_min_trades: 20
+  regime_min_expectancy: -0.15
+  maxdd_frac_of_max_loss: 0.8
+
+research:
+  llm_proposals_per_run: 8
+  leaderboard_size: 5
+  max_sleeves: 3
+  max_filters: 4
+  proposal_retries: 20       # random mutation attempts before giving up on a proposal
+  default_risk: 0.005        # live risk fraction until a champion has been scored
+
+promotion:
+  vault_pass_ratio: 0.5      # vault exam pass must reach this share of the OOS pass
+  vault_sims: 2000
+
+llm:
+  temperature: 0.7
+  timeout_s: 90
+  daily_requests: 60         # total requests per UTC day across providers
+  providers:
+    - {provider: groq, model: openai/gpt-oss-120b, env_key: GROQ_API_KEY, daily_cap: 40}
+    - {provider: gemini, model: gemini-flash-lite-latest, env_key: GEMINI_API_KEY, daily_cap: 40}
+    - {provider: openrouter, model: "openai/gpt-oss-20b:free", env_key: OPENROUTER_API_KEY, daily_cap: 30}
+  # Model names can be overridden with WV_GROQ_MODEL, WV_GEMINI_MODEL, WV_OPENROUTER_MODEL.
+
+signals:
+  default_account_size: 100000
+  paper_start_date: null     # null = date of the first ledger run
+
+charts:
+  bars: 300
+  max_instruments: 30
+
+notify:
+  notify_mention: ""         # set to your GitHub handle with a leading @ to get a push notification
+  issue_title: Weathervane signals
+  label: signals
+
+actions:
+  minutes_per_month_limit: 2000
+  estimate_minutes_per_month: {research: 1050, signals: 130, companies: 330, weekly: 60}
+
+companies:
+  per_run: 2
+  tradingagents_ref: c4544913a14ed3df5f1ed7b9e8483270ce20682a   # pinned commit of TauricResearch/TradingAgents
+  quick_provider: google
+  quick_model: gemini-flash-lite-latest
+  deep_provider: groq
+  deep_model: openai/gpt-oss-120b
+  deep_fallback_provider: google
+  deep_fallback_model: gemini-flash-latest
+  watchlist: [AAPL, ABBV, ABT, ACN, ADBE, AIG, AMD, AMGN, AMT, AMZN, AVGO, AXP, BA, BAC, BK, BKNG, BLK, BMY, BRK-B, C,
+    CAT, CHTR, CL, CMCSA, COF, COP, COST, CRM, CSCO, CVS, CVX, DE, DHR, DIS, DUK, EMR, FDX, GD, GE, GILD, GM, GOOG,
+    GOOGL, GS, HD, HON, IBM, INTC, INTU, ISRG, JNJ, JPM, KO, LIN, LLY, LMT, LOW, MA, MCD, MDLZ, MDT, MET, META, MMM,
+    MO, MRK, MS, MSFT, NEE, NFLX, NKE, NOW, NVDA, ORCL, PEP, PFE, PG, PM, PYPL, QCOM, RTX, SBUX, SCHW, SO, SPG, T,
+    TGT, TMO, TMUS, TSLA, TXN, UBER, UNH, UNP, UPS, USB, V, VZ, WFC, WMT, XOM]

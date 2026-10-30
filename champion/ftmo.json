@@ -1,0 +1,34 @@
+{
+  "id": "seed-ftmo",
+  "portfolio": "ftmo",
+  "promoted": null,
+  "risk": null,
+  "sleeves": [
+    {
+      "id": "trend_a",
+      "instruments": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "US500", "US100", "GER40", "XAUUSD", "USOIL"],
+      "direction": "both",
+      "entry": {"type": "donchian_breakout", "len": 55},
+      "filters": [{"type": "trend_ma", "kind": "ema", "len": 200}],
+      "exit": {
+        "stop_atr": 2.5,
+        "target_atr": null,
+        "trail_atr": 3.0,
+        "time_stop_bars": null,
+        "exit_signal": {"type": "donchian_exit", "len": 20},
+        "reverse_on_opposite": true
+      },
+      "atr_len": 20,
+      "param_space": {
+        "entry.len": [20, 100, 5],
+        "exit.stop_atr": [1.5, 4.0, 0.25],
+        "exit.trail_atr": [2.0, 5.0, 0.25]
+      }
+    }
+  ],
+  "live_params": {
+    "trend_a": {"entry.len": 55, "exit.stop_atr": 2.5, "exit.trail_atr": 3.0}
+  },
+  "scores": null,
+  "scores_data_date": null
+}

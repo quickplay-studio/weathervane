@@ -1,0 +1,18 @@
+firm: FTMO
+program: 2-Step Swing
+source: https://ftmo.com/en/trading-objectives/
+verified_on: null   # user confirms before each exam
+account_size: 100000
+phases:
+  - {name: Challenge, profit_target_pct: 10, min_trading_days: 4}
+  - {name: Verification, profit_target_pct: 5, min_trading_days: 4}
+daily_loss_limit_pct: 5
+max_loss_pct: 10
+max_loss_type: static          # static | eod_trailing | intraday_trailing
+trailing_lock_at_start: false
+consistency_best_day_pct: null
+time_limit_days: null
+max_risk_per_trade_pct: null
+risk_guard_pct_of_daily: 60
+weekend_holding: true
+news_restriction: false

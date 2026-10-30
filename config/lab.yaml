@@ -1,0 +1,74 @@
+# Weathervane lab settings (docs/LAB.md). Everything here is optional: missing keys fall back to the built-in defaults
+# in weathervane/lab/context.py. The lab is research context only and never changes trading rules.
+
+timeout_s: 120                # per adapter (video has its own larger limit in the registry)
+
+chains:
+  tickers: [SPY, QQQ, IWM, GLD, USO, TLT, FXE]
+  n_expiries: 4               # nearest expiries between min_days and max_days
+  min_days: 7
+  max_days: 120
+  sleep_s: 1.0                # pause between yfinance calls
+  dividend_yield: {SPY: 0.013, QQQ: 0.006, IWM: 0.012, GLD: 0.0, USO: 0.0, TLT: 0.035, FXE: 0.0}
+
+rates:
+  fred_series: DGS3MO         # used only when FRED_API_KEY is set
+  default: 0.04
+
+test_set:                     # 12 contracts: call/put x moneyness x expiry
+  spot: 100.0
+  sigma: 0.20
+  r: 0.04
+  q: 0.01
+  moneyness: [0.95, 1.0, 1.05]
+  expiry_days: [45, 105]
+
+tolerances:
+  agreement_flag_rel: 0.01    # a pricing cell is flagged when it is off the reference by more than this
+  agreement_abs_floor: 0.01
+  unit_abs: 0.01
+
+crosscheck:
+  instruments: [US500, EURUSD, XAUUSD]
+  rel_flag: 1.0e-6
+  tail: 1000
+
+sabr:
+  beta: 1.0
+
+sleeves:
+  lookback_days: 1260         # about five years of daily R streams for the weight suggestions
+
+cot:
+  lookback_years: 3
+
+# News headlines (title and URL only). Off by default. To turn on, set enabled: true, list the domains you allow, and
+# give the pages to read. The hard blocklist in weathervane/lab/fetch/camofox.py (brokers, prop firms) always applies,
+# robots.txt is respected and each domain is fetched at most once every delay_s seconds.
+news:
+  enabled: false
+  base_url: http://127.0.0.1:9377
+  tickers: [SPY, QQQ]
+  max_per_ticker: 5
+  delay_s: 5.0
+  allowlist: []               # e.g. [finance.yahoo.com, www.marketwatch.com]
+  blocklist: []               # extra domains to refuse
+  sources: []                 # URL templates, {ticker} is replaced, e.g. "https://finance.yahoo.com/quote/{ticker}/news"
+
+video:
+  enabled: true
+  seconds: 45
+  fps: 30
+  width: 1920
+  height: 1080
+  hyperframes_version: "0.8.217"   # pinned; needs Node.js 22+ and FFmpeg
+
+sources:                      # libraries that are not on PyPI, cloned at a pinned commit by the workflow
+  willowtree:
+    path: data/lab/src/willowtree
+    repo: https://github.com/federicomariamassari/willowtree
+    ref: 1a4c37ed896d3213ed8e919737511bc61d355398
+  financial_engineering:
+    path: data/lab/src/financial-engineering
+    repo: https://github.com/federicomariamassari/financial-engineering
+    ref: a62c130f6050426b27c9f4b1d020473140e6d51b

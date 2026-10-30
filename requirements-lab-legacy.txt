@@ -1,0 +1,15 @@
+# Lab, group "legacy" (Python 3.10; these libraries break on numpy 2 / pandas 3 / scipy 1.12+).
+# One `pip install` per non-comment line, run separately and best effort. Needs apt: libquantlib0-dev swig build-essential.
+# Base pins first so every later line resolves against them.
+numpy==1.26.4 pandas==2.2.3 scipy==1.11.4 pyarrow pyyaml requests hmmlearn numba matplotlib mplfinance yfinance
+QuantLib
+pyql
+pynance
+git+https://github.com/dbrojas/optlib@c6a975da
+tf-quant-finance tensorflow
+# Finance-Python builds only from this commit, with cython<3 and no build isolation (slow: about 8 minutes).
+cython<3 setuptools wheel
+--no-build-isolation git+https://github.com/alpha-miner/Finance-Python@3e33d3e7
+# jsmidt/QuantPy imports pandas.io.data, which no longer exists; this line usually fails and the weights then come from the
+# reimplemented formulas (the report says so).
+git+https://github.com/jsmidt/QuantPy

@@ -1,0 +1,37 @@
+# Instruments and symbol maps. yf = yfinance ticker, oanda = OANDA v20 instrument, tv = TradingView symbol,
+# alpaca_proxy = ETF used on the Alpaca paper account, cost_bps = round-trip cost estimate.
+# contract_note is free text: verify every contract detail against the FTMO specification before an exam.
+instruments:
+  # FX
+  - {id: EURUSD, name: Euro / US Dollar, asset_class: fx, yf: EURUSD=X, oanda: EUR_USD, tv: "OANDA:EURUSD", alpaca_proxy: FXE, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD; verify against FTMO spec"}
+  - {id: GBPUSD, name: British Pound / US Dollar, asset_class: fx, yf: GBPUSD=X, oanda: GBP_USD, tv: "OANDA:GBPUSD", alpaca_proxy: FXB, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD; verify against FTMO spec"}
+  - {id: USDJPY, name: US Dollar / Japanese Yen, asset_class: fx, yf: JPY=X, oanda: USD_JPY, tv: "OANDA:USDJPY", alpaca_proxy: null, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD, P&L in JPY converted to account currency; verify against FTMO spec"}
+  - {id: AUDUSD, name: Australian Dollar / US Dollar, asset_class: fx, yf: AUDUSD=X, oanda: AUD_USD, tv: "OANDA:AUDUSD", alpaca_proxy: FXA, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD; verify against FTMO spec"}
+  - {id: USDCAD, name: US Dollar / Canadian Dollar, asset_class: fx, yf: CAD=X, oanda: USD_CAD, tv: "OANDA:USDCAD", alpaca_proxy: null, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD, P&L in CAD converted to account currency; verify against FTMO spec"}
+  - {id: USDCHF, name: US Dollar / Swiss Franc, asset_class: fx, yf: CHF=X, oanda: USD_CHF, tv: "OANDA:USDCHF", alpaca_proxy: null, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD, P&L in CHF converted to account currency; verify against FTMO spec"}
+  - {id: NZDUSD, name: New Zealand Dollar / US Dollar, asset_class: fx, yf: NZDUSD=X, oanda: NZD_USD, tv: "OANDA:NZDUSD", alpaca_proxy: null, ftmo: true, cost_bps: 1.0, contract_note: "FX spot CFD; verify against FTMO spec"}
+  # Indices
+  - {id: US500, name: S&P 500, asset_class: index, yf: ES=F, oanda: SPX500_USD, tv: "OANDA:SPX500USD", alpaca_proxy: SPY, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD, FTMO symbol name differs; verify against FTMO spec"}
+  - {id: US100, name: Nasdaq 100, asset_class: index, yf: NQ=F, oanda: NAS100_USD, tv: "OANDA:NAS100USD", alpaca_proxy: QQQ, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD, FTMO symbol name differs; verify against FTMO spec"}
+  - {id: US30, name: Dow Jones 30, asset_class: index, yf: YM=F, oanda: US30_USD, tv: "OANDA:US30USD", alpaca_proxy: DIA, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD, FTMO symbol name differs; verify against FTMO spec"}
+  - {id: GER40, name: DAX 40, asset_class: index, yf: "^GDAXI", oanda: DE30_EUR, tv: "OANDA:DE30EUR", alpaca_proxy: EWG, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD in EUR; verify against FTMO spec"}
+  - {id: UK100, name: FTSE 100, asset_class: index, yf: "^FTSE", oanda: UK100_GBP, tv: "OANDA:UK100GBP", alpaca_proxy: EWU, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD in GBP; verify against FTMO spec"}
+  - {id: JP225, name: Nikkei 225, asset_class: index, yf: "^N225", oanda: JP225_USD, tv: "OANDA:JP225USD", alpaca_proxy: EWJ, ftmo: true, cost_bps: 1.5, contract_note: "Index CFD; verify against FTMO spec"}
+  # Commodities
+  - {id: XAUUSD, name: Gold, asset_class: commodity, yf: GC=F, oanda: XAU_USD, tv: "OANDA:XAUUSD", alpaca_proxy: GLD, ftmo: true, cost_bps: 2.0, contract_note: "Spot metal CFD; verify against FTMO spec"}
+  - {id: XAGUSD, name: Silver, asset_class: commodity, yf: SI=F, oanda: XAG_USD, tv: "OANDA:XAGUSD", alpaca_proxy: SLV, ftmo: true, cost_bps: 3.0, contract_note: "Spot metal CFD; verify against FTMO spec"}
+  - {id: USOIL, name: WTI Crude Oil, asset_class: commodity, yf: CL=F, oanda: WTICO_USD, tv: "OANDA:WTICOUSD", alpaca_proxy: USO, ftmo: true, cost_bps: 4.0, contract_note: "Oil CFD, rolls differ from futures; verify against FTMO spec"}
+  - {id: NATGAS, name: Natural Gas, asset_class: commodity, yf: NG=F, oanda: NATGAS_USD, tv: "OANDA:NATGASUSD", alpaca_proxy: UNG, ftmo: true, cost_bps: 6.0, contract_note: "Gas CFD, rolls differ from futures; verify against FTMO spec"}
+  # Crypto
+  - {id: BTCUSD, name: Bitcoin / US Dollar, asset_class: crypto, yf: BTC-USD, oanda: null, tv: "BITSTAMP:BTCUSD", alpaca_proxy: null, ftmo: true, cost_bps: 10.0, contract_note: "Crypto CFD, trades 24/7; verify against FTMO spec"}
+  # Legacy Weathervane ETFs (not tradable at FTMO)
+  - {id: SPY, name: SPDR S&P 500 ETF, asset_class: etf, yf: SPY, oanda: null, tv: "AMEX:SPY", alpaca_proxy: SPY, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: EFA, name: iShares MSCI EAFE ETF, asset_class: etf, yf: EFA, oanda: null, tv: "AMEX:EFA", alpaca_proxy: EFA, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: EEM, name: iShares MSCI Emerging Markets ETF, asset_class: etf, yf: EEM, oanda: null, tv: "AMEX:EEM", alpaca_proxy: EEM, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: IEF, name: iShares 7-10 Year Treasury ETF, asset_class: etf, yf: IEF, oanda: null, tv: "NASDAQ:IEF", alpaca_proxy: IEF, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: TLT, name: iShares 20+ Year Treasury ETF, asset_class: etf, yf: TLT, oanda: null, tv: "NASDAQ:TLT", alpaca_proxy: TLT, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: LQD, name: iShares Investment Grade Corporate Bond ETF, asset_class: etf, yf: LQD, oanda: null, tv: "AMEX:LQD", alpaca_proxy: LQD, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: GLD, name: SPDR Gold Shares, asset_class: etf, yf: GLD, oanda: null, tv: "AMEX:GLD", alpaca_proxy: GLD, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: DBC, name: Invesco DB Commodity Index Fund, asset_class: etf, yf: DBC, oanda: null, tv: "AMEX:DBC", alpaca_proxy: DBC, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: VNQ, name: Vanguard Real Estate ETF, asset_class: etf, yf: VNQ, oanda: null, tv: "AMEX:VNQ", alpaca_proxy: VNQ, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}
+  - {id: UUP, name: Invesco DB US Dollar Index Bullish Fund, asset_class: etf, yf: UUP, oanda: null, tv: "AMEX:UUP", alpaca_proxy: UUP, ftmo: false, cost_bps: 2.0, contract_note: "US listed ETF, whole shares on Alpaca paper"}

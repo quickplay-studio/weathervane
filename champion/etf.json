@@ -1,0 +1,35 @@
+{
+  "id": "seed-etf",
+  "portfolio": "etf",
+  "promoted": null,
+  "risk": null,
+  "sleeves": [
+    {
+      "id": "etf_trend",
+      "instruments": ["SPY", "EFA", "EEM", "IEF", "TLT", "LQD", "GLD", "DBC", "VNQ", "UUP"],
+      "direction": "both",
+      "entry": {"type": "ma_cross", "kind": "ema", "fast": 50, "slow": 200},
+      "filters": [],
+      "exit": {
+        "stop_atr": 3.0,
+        "target_atr": null,
+        "trail_atr": 4.0,
+        "time_stop_bars": null,
+        "exit_signal": null,
+        "reverse_on_opposite": true
+      },
+      "atr_len": 20,
+      "param_space": {
+        "entry.fast": [30, 80, 5],
+        "entry.slow": [150, 250, 10],
+        "exit.stop_atr": [2.0, 4.5, 0.25],
+        "exit.trail_atr": [3.0, 6.0, 0.25]
+      }
+    }
+  ],
+  "live_params": {
+    "etf_trend": {"entry.fast": 50, "entry.slow": 200, "exit.stop_atr": 3.0, "exit.trail_atr": 4.0}
+  },
+  "scores": null,
+  "scores_data_date": null
+}
