@@ -1,0 +1,268 @@
+name: lab
+
+# Saturday research lab (docs/LAB.md): runs the researched finance libraries as isolated adapters and writes
+# reports/lab/<date>.md plus results/context.json. Nothing here feeds trading rules, and a failing library only turns its
+# own row in the report red.
+on:
+  schedule:
+    - cron: "29 7 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  HYPERFRAMES_NO_TELEMETRY: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  chains:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Option chains, rate and test set
+        run: python -m weathervane.lab chains
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lab-inputs
+          path: out/lab
+          if-no-files-found: warn
+          retention-days: 7
+
+  modern:
+    needs: chains
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GS_CLIENT_ID: ${{ secrets.GS_CLIENT_ID }}
+      GS_CLIENT_SECRET: ${{ secrets.GS_CLIENT_SECRET }}
+      CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-lab-modern.txt
+      - run: pip install -r requirements.txt
+      - name: Restore market data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: wv-data-none
+          restore-keys: wv-data-
+      - uses: actions/download-artifact@v4
+        with:
+          name: lab-inputs
+          path: out/lab
+        continue-on-error: true
+      - name: Install lab libraries one by one
+        run: |
+          grep -v '^[[:space:]]*#' requirements-lab-modern.txt | grep -v '^[[:space:]]*$' | while IFS= read -r line; do
+            echo "::group::pip install $line"
+            pip install $line || echo "failed: $line"
+            echo "::endgroup::"
+          done
+      - name: Clone libraries that are not on PyPI at their pinned commits
+        run: |
+          python - <<'PY' > /tmp/clones.txt
+          import yaml
+          for name, s in yaml.safe_load(open("config/lab.yaml"))["sources"].items():
+              print(s["repo"], s["ref"], s["path"])
+          PY
+          while read -r repo ref path; do
+            mkdir -p "$path"
+            ( git -C "$path" init -q && git -C "$path" fetch -q --depth 1 "$repo" "$ref" && git -C "$path" checkout -q FETCH_HEAD ) || echo "failed: $repo"
+          done < /tmp/clones.txt
+      - name: Is the news fetch enabled
+        id: news
+        run: |
+          python -c "import yaml; print('on=' + str(bool((yaml.safe_load(open('config/lab.yaml')).get('news') or {}).get('enabled'))).lower())" >> "$GITHUB_OUTPUT"
+      - name: Start camofox-browser (news.enabled only)
+        if: steps.news.outputs.on == 'true'
+        continue-on-error: true
+        env:
+          CAMOFOX_CRASH_REPORT_ENABLED: "false"
+          PORT: "9377"
+        run: |
+          nohup npx --yes @askjo/camofox-browser > /tmp/camofox.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:9377/health && break; sleep 2; done
+      - name: Run group modern
+        run: python -m weathervane.lab run --group modern
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-modern
+          path: out/lab
+          retention-days: 7
+
+  legacy:
+    needs: chains
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: System packages
+        continue-on-error: true
+        run: sudo apt-get update -q && sudo apt-get install -y -q libquantlib0-dev swig build-essential
+      - name: Restore market data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: wv-data-none
+          restore-keys: wv-data-
+      - uses: actions/download-artifact@v4
+        with:
+          name: lab-inputs
+          path: out/lab
+        continue-on-error: true
+      - name: Install lab libraries one by one (best effort)
+        run: |
+          grep -v '^[[:space:]]*#' requirements-lab-legacy.txt | grep -v '^[[:space:]]*$' | while IFS= read -r line; do
+            echo "::group::pip install $line"
+            pip install $line || echo "failed: $line"
+            echo "::endgroup::"
+          done
+      - name: Run group legacy
+        run: python -m weathervane.lab run --group legacy
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-legacy
+          path: out/lab
+          retention-days: 7
+
+  video:
+    needs: modern
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      # HyperFrames needs Node.js 22+ and FFmpeg (its README); docs/LAB.md said Node 20.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: FFmpeg
+        continue-on-error: true
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - name: Restore market data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: wv-data-none
+          restore-keys: wv-data-
+      - uses: actions/download-artifact@v4
+        with:
+          name: lab-modern
+          path: out/lab
+        continue-on-error: true
+      - name: Headless browser for HyperFrames
+        continue-on-error: true
+        run: npx --yes hyperframes@0.8.217 browser ensure
+      - name: Render (skips cleanly on any error)
+        run: python -m weathervane.lab run --group video
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-video
+          path: out/lab/video.json
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: video-mp4
+          path: out/video/weekly.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+
+  report:
+    needs: [chains, modern, legacy, video]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    concurrency:
+      group: weathervane-commit
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Date stamp for the cache key
+        id: date
+        run: echo "d=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore market data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: wv-data-none
+          restore-keys: wv-data-
+      - name: IV history cache
+        uses: actions/cache@v4
+        with:
+          path: data/lab/iv_history.parquet
+          key: wv-lab-iv-${{ steps.date.outputs.d }}
+          restore-keys: wv-lab-iv-
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lab-*
+          path: out/lab
+          merge-multiple: true
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: video-mp4
+          path: out/video
+        continue-on-error: true
+      - name: Merge into the report
+        run: python -m weathervane.lab report
+      - name: Push the video to the charts branch (existing charts are kept)
+        if: hashFiles('out/video/weekly.mp4') != ''
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          cd "$tmp"
+          git init -q -b charts
+          git remote add origin "$remote"
+          git fetch -q --depth 1 origin charts && git checkout -q FETCH_HEAD -B charts || echo "no charts branch yet"
+          mkdir -p lab
+          cp "$GITHUB_WORKSPACE/out/video/weekly.mp4" lab/weekly.mp4
+          git config user.name "weathervane-bot"
+          git config user.email "weathervane-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "lab video $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q --force origin charts
+      - name: Commit report and context
+        run: |
+          scripts/commit_push.sh "lab report $(date -u +%F)" reports/lab results/context.json

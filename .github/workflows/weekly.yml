@@ -1,0 +1,71 @@
+name: weekly
+
+# Saturday: vault-check the best challenger and promote it, regenerate Pine, write the weekly report, refresh charts.
+on:
+  schedule:
+    - cron: "41 9 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: weathervane-commit
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      OANDA_TOKEN: ${{ secrets.OANDA_TOKEN }}
+      OANDA_ACCOUNT_ID: ${{ secrets.OANDA_ACCOUNT_ID }}
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Optional tearsheet dependency
+        continue-on-error: true
+        run: pip install quantstats
+      - name: Date stamp for the data cache key
+        id: date
+        run: echo "d=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore market data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: wv-data-${{ steps.date.outputs.d }}
+          restore-keys: wv-data-
+      - name: Fetch data
+        run: python -m weathervane fetch
+      - name: Promote
+        run: python -m weathervane promote
+      - name: Pine scripts
+        run: python -m weathervane pine
+      - name: Charts
+        continue-on-error: true
+        run: python -m weathervane charts
+      - name: Weekly report
+        run: python -m weathervane report
+      - name: Push charts branch
+        continue-on-error: true
+        run: scripts/push_charts.sh out/charts
+      - name: Commit results
+        run: |
+          scripts/commit_push.sh "weekly: report and promotion $(date -u +%F)" champion pine reports results

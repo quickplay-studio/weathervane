@@ -1,0 +1,68 @@
+name: research
+
+# Nightly AutoResearch loop: one change to the champion at a time, evaluated walk-forward, kept only if it clearly wins.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "Research time budget in minutes"
+        default: "30"
+      portfolio:
+        description: "Portfolio id, auto (alternate by date) or all"
+        default: "auto"
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: weathervane-commit
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      OANDA_TOKEN: ${{ secrets.OANDA_TOKEN }}
+      OANDA_ACCOUNT_ID: ${{ secrets.OANDA_ACCOUNT_ID }}
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Date stamp for the data cache key
+        id: date
+        run: echo "d=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore market data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: wv-data-${{ steps.date.outputs.d }}
+          restore-keys: wv-data-
+      - name: Fetch data
+        run: python -m weathervane fetch
+      - name: Research
+        env:
+          MINUTES: ${{ inputs.minutes || '30' }}
+          PORTFOLIO: ${{ inputs.portfolio || 'auto' }}
+        run: python -m weathervane research --minutes "$MINUTES" --portfolio "$PORTFOLIO"
+      - name: Commit results
+        run: |
+          scripts/commit_push.sh "research: nightly run $(date -u +%F)" results champion

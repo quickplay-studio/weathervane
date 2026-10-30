@@ -1,0 +1,72 @@
+name: signals
+
+# Daily after the close: live signals from the champions, internal paper ledger, paper broker sync, charts, notification.
+on:
+  schedule:
+    - cron: "23 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: weathervane-commit
+  cancel-in-progress: false
+
+jobs:
+  signals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      OANDA_TOKEN: ${{ secrets.OANDA_TOKEN }}
+      OANDA_ACCOUNT_ID: ${{ secrets.OANDA_ACCOUNT_ID }}
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Date stamp for the data cache key
+        id: date
+        run: echo "d=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore market data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: wv-data-${{ steps.date.outputs.d }}
+          restore-keys: wv-data-
+      - name: Fetch data
+        run: python -m weathervane fetch
+      - name: Signals
+        run: python -m weathervane signals
+      - name: Paper ledger
+        run: python -m weathervane ledger
+      - name: Paper brokers
+        continue-on-error: true
+        run: python -m weathervane paper
+      - name: Charts
+        continue-on-error: true
+        run: python -m weathervane charts
+      - name: Push charts branch
+        continue-on-error: true
+        run: scripts/push_charts.sh out/charts
+      - name: Notify
+        continue-on-error: true
+        run: python -m weathervane notify
+      - name: Commit results
+        run: |
+          scripts/commit_push.sh "signals: $(date -u +%F)" signals results
