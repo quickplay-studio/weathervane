@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width={{WIDTH}}, height={{HEIGHT}}" />
+  <title>Weathervane weekly recap</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    :root {
+      --bg: #0e1116; --panel: #171c24; --ink: #e8edf4; --muted: #8a96a8; --line: #2a3340;
+      --accent: #4aa3ff; --good: #3ecf8e; --bad: #ff6b6b; --warn: #f5b84a;
+    }
+    body { margin: 0; background: var(--bg); }
+    #root {
+      position: relative; width: {{WIDTH}}px; height: {{HEIGHT}}px; overflow: hidden; background: var(--bg);
+      color: var(--ink); font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    }
+    .clip { position: absolute; inset: 0; box-sizing: border-box; padding: 96px 128px; display: flex; flex-direction: column; }
+    h1 { font-size: 112px; line-height: 1.05; margin: 0 0 24px; font-weight: 700; letter-spacing: -2px; }
+    h2 { font-size: 60px; margin: 0 0 40px; font-weight: 600; }
+    .sub { font-size: 38px; color: var(--muted); margin: 0; }
+    .tag { display: inline-block; font-size: 26px; padding: 6px 18px; border: 2px solid var(--warn); color: var(--warn);
+           border-radius: 999px; margin-left: 20px; vertical-align: middle; }
+    .row { display: flex; gap: 64px; flex: 1; align-items: stretch; }
+    .card { flex: 1; background: var(--panel); border: 2px solid var(--line); border-radius: 20px; padding: 36px 44px;
+            display: flex; flex-direction: column; min-width: 0; }
+    .card h3 { margin: 0 0 6px; font-size: 40px; font-weight: 600; }
+    .card .meta { color: var(--muted); font-size: 26px; margin-bottom: 16px; }
+    .big { font-size: 64px; font-weight: 700; }
+    svg { width: 100%; flex: 1; min-height: 0; }
+    table { border-collapse: collapse; width: 100%; font-size: 34px; }
+    th { text-align: left; color: var(--muted); font-weight: 500; font-size: 26px; padding: 0 16px 14px 0; border-bottom: 2px solid var(--line); }
+    td { padding: 16px 16px 16px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .long { color: var(--good); } .short { color: var(--bad); }
+    .bar { height: 34px; background: var(--line); border-radius: 17px; overflow: hidden; margin: 8px 0 26px; }
+    .bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 17px; }
+    .label { display: flex; justify-content: space-between; font-size: 32px; }
+    .foot { margin-top: auto; color: var(--muted); font-size: 26px; }
+    .empty { color: var(--muted); font-size: 40px; margin-top: 60px; }
+    .kv { display: grid; grid-template-columns: 1fr auto; font-size: 34px; gap: 12px 40px; }
+    .kv span:nth-child(odd) { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="{{DURATION}}" data-width="{{WIDTH}}" data-height="{{HEIGHT}}">
+    <section id="scene-a" class="clip" data-start="{{A_START}}" data-duration="{{A_DUR}}" data-track-index="1"
+             style="justify-content:center"></section>
+    <section id="scene-b" class="clip" data-start="{{B_START}}" data-duration="{{B_DUR}}" data-track-index="1"></section>
+    <section id="scene-c" class="clip" data-start="{{C_START}}" data-duration="{{C_DUR}}" data-track-index="1"></section>
+    <section id="scene-d" class="clip" data-start="{{D_START}}" data-duration="{{D_DUR}}" data-track-index="1"></section>
+    <section id="scene-e" class="clip" data-start="{{E_START}}" data-duration="{{E_DUR}}" data-track-index="1"></section>
+  </div>
+
+  <script id="wv-data" type="application/json">{{DATA_JSON}}</script>
+  <script>
+    (function () {
+      var data = JSON.parse(document.getElementById("wv-data").textContent);
+      var scenes = {{SCENES_JSON}};
+      var NS = "http://www.w3.org/2000/svg";
+      function el(tag, attrs, html) {
+        var e = document.createElement(tag);
+        for (var k in (attrs || {})) e.setAttribute(k, attrs[k]);
+        if (html !== undefined) e.innerHTML = html;
+        return e;
+      }
+      function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
+      function pct(x, d) { return x == null ? "n/a" : (100 * x).toFixed(d == null ? 0 : d) + "%"; }
+      function num(x, d) { return x == null ? "n/a" : Number(x).toFixed(d == null ? 2 : d); }
+
+      // scene A: title
+      var a = document.getElementById("scene-a");
+      a.appendChild(el("h1", {id: "a-title"}, "Weathervane<br>weekly recap"));
+      a.appendChild(el("p", {id: "a-sub", class: "sub"}, esc(data.date) + " &middot; paper trading only &middot; research context, not advice"));
+
+      // scene B: equity curves
+      var b = document.getElementById("scene-b");
+      b.appendChild(el("h2", {id: "b-head"}, "Simulated equity (additive, at the champion's risk)"));
+      var rowB = el("div", {class: "row"});
+      b.appendChild(rowB);
+      var paths = [];
+      (data.portfolios || []).forEach(function (p, i) {
+        var card = el("div", {class: "card"});
+        var tag = p.data_source === "synthetic" ? '<span class="tag">synthetic data</span>' : "";
+        card.appendChild(el("h3", {}, esc(p.id) + tag));
+        var end = p.equity && p.equity.length ? p.equity[p.equity.length - 1] : null;
+        card.appendChild(el("div", {class: "meta"}, "champion " + esc(p.champion) + " &middot; " + (p.days || 0) + " days"));
+        card.appendChild(el("div", {class: "big " + (end != null && end >= 1 ? "long" : "short"), id: "b-end-" + i},
+                            end == null ? "n/a" : (100 * (end - 1)).toFixed(1) + "%"));
+        var svg = document.createElementNS(NS, "svg");
+        svg.setAttribute("viewBox", "0 0 1000 400");
+        svg.setAttribute("preserveAspectRatio", "none");
+        var pts = p.equity || [];
+        if (pts.length > 1) {
+          var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), span = (hi - lo) || 1;
+          var d = pts.map(function (v, k) { return (k ? "L" : "M") + (1000 * k / (pts.length - 1)).toFixed(1) + " " + (380 - 360 * (v - lo) / span).toFixed(1); }).join(" ");
+          var base = document.createElementNS(NS, "line");
+          var by = 380 - 360 * (1 - lo) / span;
+          base.setAttribute("x1", 0); base.setAttribute("x2", 1000); base.setAttribute("y1", by); base.setAttribute("y2", by);
+          base.setAttribute("stroke", "#2a3340"); base.setAttribute("stroke-width", 2); base.setAttribute("stroke-dasharray", "8 8");
+          if (by >= 0 && by <= 400) svg.appendChild(base);
+          var path = document.createElementNS(NS, "path");
+          path.setAttribute("d", d); path.setAttribute("fill", "none"); path.setAttribute("stroke", i ? "#f5b84a" : "#4aa3ff");
+          path.setAttribute("stroke-width", 5); path.setAttribute("stroke-linejoin", "round");
+          path.setAttribute("id", "b-path-" + i);
+          svg.appendChild(path);
+          paths.push(path);
+        }
+        card.appendChild(svg);
+        rowB.appendChild(card);
+      });
+      if (!(data.portfolios || []).length) b.appendChild(el("div", {class: "empty"}, "No simulated equity available this week."));
+
+      // scene C: open signals
+      var c = document.getElementById("scene-c");
+      c.appendChild(el("h2", {id: "c-head"}, "Open signals"));
+      var sig = data.signals || [];
+      if (sig.length) {
+        var rows = sig.slice(0, 9).map(function (s) {
+          return "<tr class='sig-row'><td>" + esc(s.portfolio) + "</td><td><b>" + esc(s.instrument) + "</b></td><td>" + esc(s.action) +
+                 "</td><td class='" + esc(s.side) + "'>" + esc(s.side) + "</td><td>" + esc(s.entry) + "</td><td>" + esc(s.stop) + "</td><td>" + esc(s.target) + "</td></tr>";
+        }).join("");
+        c.appendChild(el("table", {id: "c-table"}, "<tr><th>Portfolio</th><th>Instrument</th><th>Action</th><th>Side</th><th>Entry</th><th>Stop</th><th>Target</th></tr>" + rows));
+        if (sig.length > 9) c.appendChild(el("div", {class: "foot"}, "+ " + (sig.length - 9) + " more in signals/latest.md"));
+      } else {
+        c.appendChild(el("div", {class: "empty"}, data.signals_note || "No open signals right now."));
+      }
+
+      // scene D: exam odds
+      var dsc = document.getElementById("scene-d");
+      dsc.appendChild(el("h2", {id: "d-head"}, "Exam pass probability (out of sample, bootstrapped)"));
+      var rowD = el("div", {class: "row"});
+      dsc.appendChild(rowD);
+      var bars = [];
+      (data.portfolios || []).forEach(function (p) {
+        var card = el("div", {class: "card"});
+        card.appendChild(el("h3", {}, esc(p.id)));
+        if (p.exam) {
+          card.appendChild(el("div", {class: "meta"}, esc(p.firm || "") + " &middot; median " + num(p.exam.days_median, 0) + " days to pass"));
+          [["Pass both phases", p.exam.pass_combined], ["Phase 1", p.exam.pass_p1], ["Phase 2", p.exam.pass_p2]].forEach(function (r) {
+            card.appendChild(el("div", {class: "label"}, "<span>" + r[0] + "</span><b>" + pct(r[1], 0) + "</b>"));
+            var bar = el("div", {class: "bar"}, "<i></i>");
+            card.appendChild(bar);
+            bars.push({node: bar.firstChild, value: Math.max(0, Math.min(1, r[1] || 0))});
+          });
+        } else {
+          card.appendChild(el("div", {class: "empty"}, "Not scored yet (seed champion)."));
+        }
+        rowD.appendChild(card);
+      });
+
+      // scene E: lab context and disclaimer
+      var e = document.getElementById("scene-e");
+      e.appendChild(el("h2", {id: "e-head"}, "Lab context"));
+      var kv = [];
+      (data.lab && data.lab.vol || []).slice(0, 5).forEach(function (v) {
+        kv.push(["Implied vol " + esc(v.ticker) + " (30d ATM)", pct(v.atm_iv_30d, 1) + (v.iv_rank != null ? " &middot; rank " + num(v.iv_rank, 0) : "")]);
+      });
+      (data.lab && data.lab.cot || []).slice(0, 5).forEach(function (m) {
+        kv.push(["Positioning " + esc(m.label), (m.net >= 0 ? "+" : "") + Math.round(m.net).toLocaleString("en-US") + (m.percentile != null ? " &middot; " + num(m.percentile, 0) + "th pct" : "")]);
+      });
+      if (kv.length) {
+        e.appendChild(el("div", {class: "kv", id: "e-kv"}, kv.map(function (r) { return "<span>" + r[0] + "</span><span>" + r[1] + "</span>"; }).join("")));
+      } else {
+        e.appendChild(el("div", {class: "empty"}, "Lab data (option chains, COT) was not available this week."));
+      }
+      e.appendChild(el("div", {class: "foot"}, "Paper trading and research context only. Nothing here is investment advice."));
+
+      // timeline: every tween is placed at an absolute time, nothing runs on a clock
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      var S = scenes;
+      tl.from("#a-title", { y: 60, opacity: 0, duration: 0.9, ease: "power3.out" }, S.a.start + 0.2);
+      tl.from("#a-sub", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, S.a.start + 0.9);
+      tl.from("#b-head", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, S.b.start + 0.2);
+      tl.from("#scene-b .card", { y: 40, opacity: 0, duration: 0.7, stagger: 0.2, ease: "power3.out" }, S.b.start + 0.5);
+      paths.forEach(function (p, i) {
+        var len = p.getTotalLength();
+        p.style.strokeDasharray = len; 
+        tl.fromTo(p, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: Math.max(S.b.duration * 0.55, 1), ease: "power1.inOut" }, S.b.start + 1.2 + i * 0.3);
+      });
+      tl.from("#c-head", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, S.c.start + 0.2);
+      tl.from("#scene-c .sig-row", { x: -50, opacity: 0, duration: 0.5, stagger: 0.18, ease: "power2.out" }, S.c.start + 0.7);
+      tl.from("#scene-c .empty", { opacity: 0, duration: 0.8 }, S.c.start + 0.7);
+      tl.from("#d-head", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, S.d.start + 0.2);
+      tl.from("#scene-d .card", { y: 40, opacity: 0, duration: 0.7, stagger: 0.2, ease: "power3.out" }, S.d.start + 0.5);
+      bars.forEach(function (b2, i) {
+        tl.fromTo(b2.node, { width: "0%" }, { width: (100 * b2.value).toFixed(1) + "%", duration: 1.2, ease: "power2.out" }, S.d.start + 1.2 + i * 0.15);
+      });
+      tl.from("#e-head", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, S.e.start + 0.2);
+      tl.from("#scene-e .kv, #scene-e .empty", { opacity: 0, y: 30, duration: 0.8, ease: "power2.out" }, S.e.start + 0.6);
+      tl.from("#scene-e .foot", { opacity: 0, duration: 0.8 }, S.e.start + 1.4);
+      window.__timelines["main"] = tl;
+    })();
+  </script>
+</body>
+</html>
