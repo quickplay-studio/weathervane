@@ -60,7 +60,7 @@ charts:
   max_instruments: 30
 
 notify:
-  notify_mention: ""         # set to your GitHub handle with a leading @ to get a push notification
+  notify_mention: "@quickplay-studio"       # set to your GitHub handle with a leading @ to get a push notification
   issue_title: Weathervane signals
   label: signals
 
